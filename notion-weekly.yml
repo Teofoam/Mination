@@ -1,0 +1,33 @@
+name: Fill Weekly To-do pages
+
+on:
+  schedule:
+    # Every 3 hours. The script is idempotent — it only touches pages that
+    # still carry the placeholder title — so running often just means the
+    # page is filled in soon after Notion generates it. GitHub's scheduler
+    # is best-effort and can lag by several minutes.
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print changes without writing to Notion"
+        type: boolean
+        default: false
+
+jobs:
+  fill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - run: python fill_weekly_todo.py
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          LOCAL_TZ: Asia/Shanghai
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
