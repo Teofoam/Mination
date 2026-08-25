@@ -76,11 +76,19 @@ FLEX_BLOCK = 38
 # --------------------------------------------------------------------------
 
 # How the number after the dot is counted:
-#   "month"  day within the fiscal month, 1..30   -> 2602.01 = 31 Jul
 #   "year"   day within the fiscal year,  1..366  -> 2602.037 = 6 Aug
-DAY_NUMBERING = "month"
+#   "month"  day within the fiscal month, 1..30   -> 2602.07  = 6 Aug
+DAY_NUMBERING = "year"
 
-DAY_DIGITS = 2 if DAY_NUMBERING == "month" else 3
+# Width of the number after the dot. None picks it from DAY_NUMBERING:
+# 3 digits for "year" (runs to 366), 2 for "month" (runs to 30).
+DAY_DIGITS = None
+
+
+def day_digits() -> int:
+    if DAY_DIGITS is not None:
+        return DAY_DIGITS
+    return 2 if DAY_NUMBERING == "month" else 3
 
 TITLE_SUFFIX = " Weekly To-do List"
 
@@ -193,7 +201,7 @@ def day_number(block: Block, offset: int) -> int:
 def label(block: Block, offset: int = 0) -> str:
     yy = block.fy_start.year % 100
     n = day_number(block, offset)
-    return f"{yy:02d}{block.month_no:02d}.{n:0{DAY_DIGITS}d}"
+    return f"{yy:02d}{block.month_no:02d}.{n:0{day_digits()}d}"
 
 
 def page_title(block: Block) -> str:

@@ -48,12 +48,37 @@ assert F.block_containing(date(2027, 2, 12)).no == 38
 assert F.block_containing(date(2027, 2, 13)).no == 39
 assert F.block_containing(date(2027, 6, 30)).no == 61
 
-# ---- his real Notion titles ----------------------------------------------
-t1 = F.page_title(F.block_containing(date(2026, 7, 25)))
-t2 = F.page_title(F.block_containing(date(2026, 7, 31)))
-assert t1 == "2601.25 - 2601.30 Weekly To-do List", t1
-assert t2 == "2602.01 - 2602.06 Weekly To-do List", t2
-print("reproduces both real page titles:", t1, "/", t2)
+# ---- both numbering modes, pinned independently of the current default ---
+import contextlib
+
+@contextlib.contextmanager
+def numbering(mode):
+    prev = F.DAY_NUMBERING
+    F.DAY_NUMBERING = mode
+    try:
+        yield
+    finally:
+        F.DAY_NUMBERING = prev
+
+with numbering("month"):
+    assert F.day_digits() == 2
+    t = F.page_title(F.block_containing(date(2026, 7, 25)))
+    u = F.page_title(F.block_containing(date(2026, 7, 31)))
+    assert t == "2601.25 - 2601.30 Weekly To-do List", t
+    assert u == "2602.01 - 2602.06 Weekly To-do List", u
+    print('month mode reproduces the existing page titles:', t, "/", u)
+
+with numbering("year"):
+    assert F.day_digits() == 3
+    v = F.page_title(F.block_containing(date(2026, 8, 6)))
+    w = F.page_title(F.block_containing(date(2027, 6, 25)))
+    assert v == "2602.037 - 2602.042 Weekly To-do List", v
+    assert w == "2613.360 - 2613.365 Weekly To-do List", w
+    print('year mode:', v, "/", w)
+    # leap year runs one further
+    x = F.page_title(F.build_year(date(2027, 7, 1))[60])
+    assert x == "2713.361 - 2713.366 Weekly To-do List", x
+    print('year mode, leap:', x)
 
 # ---- leap fiscal year ----------------------------------------------------
 lb = F.build_year(date(2027, 7, 1))               # contains Feb 2028

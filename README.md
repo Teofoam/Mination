@@ -68,12 +68,16 @@ NOTION_TOKEN=ntn_... DRY_RUN=1 python fill_weekly_todo.py
 For a page Notion created on 2026-08-06:
 
 ```
-Name        2602.07 - 2602.12 Weekly To-do List
+Name        2602.037 - 2602.042 Weekly To-do List
 Date Range  2026-08-06 → 2026-08-11
-headings    2602.07 | 08-06 Thu   … through …   2602.12 | 08-11 Tue
+headings    2602.037 | 08-06 Thu   … through …   2602.042 | 08-11 Tue
 ```
 
 That's block 7 of 61 — the second row of M2, English Hyacinth.
+
+Both numbering schemes are supported and covered by the tests; flipping
+`DAY_NUMBERING` to `"month"` gives `2602.07 - 2602.12` for the same block, and
+reproduces the titles of the pages that already exist.
 
 Headings are matched by their `(J)` / `(J+3)` markers, so keep those markers in
 the template. Everything else on the page is left alone.
@@ -101,7 +105,8 @@ All at the top of `fill_weekly_todo.py`:
 
 | Constant | Default | Notes |
 |---|---|---|
-| `DAY_NUMBERING` | `"month"` | `"month"` → `2602.01 - 2602.06` for 7/31–8/5, matching your existing pages. `"year"` → `2602.031 - 2602.036`. Sets `DAY_DIGITS` to 2 or 3 automatically. |
+| `DAY_NUMBERING` | `"year"` | `"year"` → `2602.037 - 2602.042` for 8/6–8/11, i.e. day of the fiscal year, matching column A–F of the sheet. `"month"` → `2602.07 - 2602.12`, day within the fiscal month. |
+| `DAY_DIGITS` | `None` | Width of the number after the dot. `None` derives it from `DAY_NUMBERING` — 3 for `"year"`, 2 for `"month"`. Set an integer to override. |
 | `HEADING_FMT` | `{label} \| {d:%m-%d} {d:%a}` | Also available: `{doy}` `{dom}` `{month_name}` `{month_no}`, and `{d}` as a `datetime.date`. |
 | `MONTHS` | 13 rows | Name + block count per fiscal month. |
 | `FLEX_BLOCK` | `38` | The block that gives up a day in a common year. |
