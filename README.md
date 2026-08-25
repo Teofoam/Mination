@@ -56,12 +56,35 @@ The current flow:
 6. **Dry run first.** Actions → *Fill Weekly To-do pages* → Run workflow →
    tick *dry_run*. It prints every change without writing anything.
 
-Locally:
+Locally, on macOS/Linux:
 
 ```bash
 pip install requests
 NOTION_TOKEN=ntn_... DRY_RUN=1 python fill_weekly_todo.py
 ```
+
+On Windows PowerShell — the `VAR=value command` prefix is bash syntax and won't
+work; use `$env:` instead:
+
+```powershell
+pip install requests
+$env:NOTION_TOKEN = Read-Host "Notion token"
+$env:DRY_RUN = "1"
+python fill_weekly_todo.py
+```
+
+`Read-Host` keeps the token out of PSReadLine's history file
+(`$env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt`),
+which otherwise records every command you type in plain text. Clear the
+variables when you're done:
+
+```powershell
+Remove-Item Env:NOTION_TOKEN, Env:DRY_RUN
+```
+
+They only live in the current window either way. Note that `DRY_RUN` is checked
+for the exact string `1`, so unset it to write for real rather than setting it
+to `0`.
 
 ## What it writes
 
