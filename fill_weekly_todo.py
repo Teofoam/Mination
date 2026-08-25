@@ -35,6 +35,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -116,6 +117,10 @@ DRY_RUN = os.environ.get("DRY_RUN") == "1"
 # /v1/data_sources/{id}/query; page and block writes are unaffected.
 NOTION_VERSION = "2025-09-03"
 API = "https://api.notion.com/v1"
+
+MAX_RETRIES = 5
+BACKOFF_BASE = 2.0   # seconds; doubles each attempt
+THROTTLE = 0.35      # Notion allows ~3 requests/second
 
 DAY_MARKER = re.compile(r"\(J(?:\+(\d+))?\)")
 
@@ -235,10 +240,47 @@ class Notion:
         })
 
     def _call(self, method: str, path: str, **kw):
-        r = self.s.request(method, f"{API}{path}", timeout=30, **kw)
-        if not r.ok:
-            raise RuntimeError(f"{method} {path} -> {r.status_code}: {r.text}")
-        return r.json()
+        """One API call, retrying transient failures.
+
+        Retries on network errors (a proxy or flaky link can cut a TLS
+        handshake mid-way, surfacing as SSLError), on 429 rate limiting, and on
+        5xx. Does not retry 4xx: a 404 means the connection wasn't added to the
+        database, and hammering it won't help.
+        """
+        last: Exception | None = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                r = self.s.request(method, f"{API}{path}", timeout=30, **kw)
+            except requests.exceptions.RequestException as exc:
+                last = exc
+                wait = BACKOFF_BASE * (2 ** attempt)
+                print(f"  network error ({type(exc).__name__}), "
+                      f"retrying in {wait}s [{attempt + 1}/{MAX_RETRIES}]")
+                time.sleep(wait)
+                continue
+
+            if r.status_code == 429:
+                wait = float(r.headers.get("Retry-After", BACKOFF_BASE * (2 ** attempt)))
+                print(f"  rate limited, waiting {wait}s [{attempt + 1}/{MAX_RETRIES}]")
+                time.sleep(wait)
+                last = RuntimeError(f"{method} {path} -> 429")
+                continue
+
+            if r.status_code >= 500:
+                wait = BACKOFF_BASE * (2 ** attempt)
+                print(f"  server error {r.status_code}, "
+                      f"retrying in {wait}s [{attempt + 1}/{MAX_RETRIES}]")
+                time.sleep(wait)
+                last = RuntimeError(f"{method} {path} -> {r.status_code}")
+                continue
+
+            if not r.ok:
+                raise RuntimeError(f"{method} {path} -> {r.status_code}: {r.text}")
+
+            time.sleep(THROTTLE)
+            return r.json()
+
+        raise RuntimeError(f"{method} {path} failed after {MAX_RETRIES} attempts") from last
 
     def data_source_id(self) -> str:
         """Resolve the database's data source. Since 2025-09-03 a database is a
